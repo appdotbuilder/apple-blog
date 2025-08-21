@@ -1,8 +1,18 @@
+import { db } from '../db';
+import { tagsTable } from '../db/schema';
 import { type Tag } from '../schema';
+import { asc } from 'drizzle-orm';
 
 export async function getTags(): Promise<Tag[]> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is fetching all blog tags from the database,
-    // ordered by name or usage frequency.
-    return [];
+  try {
+    const results = await db.select()
+      .from(tagsTable)
+      .orderBy(asc(tagsTable.name))
+      .execute();
+
+    return results;
+  } catch (error) {
+    console.error('Failed to fetch tags:', error);
+    throw error;
+  }
 }

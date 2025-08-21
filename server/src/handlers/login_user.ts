@@ -1,18 +1,43 @@
+import { db } from '../db';
+import { usersTable } from '../db/schema';
 import { type LoginInput, type User } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function loginUser(input: LoginInput): Promise<User> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is authenticating a user by email/password,
-    // verifying password hash, and returning user data for session creation.
-    return Promise.resolve({
-        id: 1,
-        email: input.email,
-        username: 'placeholder',
-        full_name: 'Placeholder User',
-        bio: null,
-        avatar_url: null,
-        is_verified: true,
-        created_at: new Date(),
-        updated_at: new Date()
-    } as User);
-}
+export const loginUser = async (input: LoginInput): Promise<User> => {
+  try {
+    // Find user by email
+    const users = await db.select()
+      .from(usersTable)
+      .where(eq(usersTable.email, input.email))
+      .execute();
+
+    if (users.length === 0) {
+      throw new Error('Invalid email or password');
+    }
+
+    const user = users[0];
+
+    // Verify password hash using Bun's built-in password verification
+    const isValidPassword = await Bun.password.verify(input.password, user.password_hash);
+
+    if (!isValidPassword) {
+      throw new Error('Invalid email or password');
+    }
+
+    // Return user data without password hash
+    return {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      full_name: user.full_name,
+      bio: user.bio,
+      avatar_url: user.avatar_url,
+      is_verified: user.is_verified,
+      created_at: user.created_at,
+      updated_at: user.updated_at
+    };
+  } catch (error) {
+    console.error('User login failed:', error);
+    throw error;
+  }
+};

@@ -1,25 +1,33 @@
+import { db } from '../db';
+import { postsTable } from '../db/schema';
 import { type Post } from '../schema';
+import { eq, sql } from 'drizzle-orm';
 
-export async function likePost(postId: number): Promise<Post> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is incrementing the like count for a post,
-    // potentially implementing user-based like tracking to prevent duplicates.
-    return Promise.resolve({
-        id: postId,
-        title: 'Sample Post',
-        slug: 'sample-post',
-        content: 'Sample content',
-        excerpt: null,
-        featured_image_url: null,
-        media_type: 'text',
-        media_url: null,
-        status: 'published',
-        published_at: new Date(),
-        author_id: 1,
-        category_id: 1,
-        view_count: 5,
-        like_count: 1, // Incremented
-        created_at: new Date(),
+export const likePost = async (postId: number): Promise<Post> => {
+  try {
+    // First check if the post exists
+    const existingPost = await db.select()
+      .from(postsTable)
+      .where(eq(postsTable.id, postId))
+      .execute();
+
+    if (existingPost.length === 0) {
+      throw new Error(`Post with id ${postId} not found`);
+    }
+
+    // Increment the like count atomically
+    const result = await db.update(postsTable)
+      .set({ 
+        like_count: sql`${postsTable.like_count} + 1`,
         updated_at: new Date()
-    } as Post);
-}
+      })
+      .where(eq(postsTable.id, postId))
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('Like post failed:', error);
+    throw error;
+  }
+};
